@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Steel.ee Price Calculator
- * Description: Hinnakalkulaator (materjal + haar A/B + jm) + WPForms päringu täitmine (hind ID=17, parameetrid steel-orient-params, sõnum auto)
- * Version: 2.3
+ * Description: Hinnakalkulaator (JM-põhine valem) + WPForms päringu täitmine (hind ID=17, parameetrid steel-orient-params, sõnum auto)
+ * Version: 2.4
  */
 
 if (!defined('ABSPATH')) exit;
@@ -59,20 +59,17 @@ add_shortcode('steel_price_calc', function () {
 
     <script>
     function steelFindWPFormsMessageField(){
-      // Otsime lehelt kõige tõenäolisema WPForms "message" textarea/input välja.
-      // Täidame ainult siis, kui väli on tühi.
       var candidates = [];
 
       // 1) WPForms textarea (enamasti sõnum)
       document.querySelectorAll("form.wpforms-form textarea").forEach(function(t){ candidates.push(t); });
 
-      // 2) Üldine textarea (kui vorm pole wpforms-form klassiga)
+      // 2) Üldine textarea fallback
       document.querySelectorAll("textarea").forEach(function(t){ candidates.push(t); });
 
-      // 3) Mõnikord kasutatakse input type=text sõnumiks
-      document.querySelectorAll("form.wpforms-form input[type=\'text\']").forEach(function(i){ candidates.push(i); });
+      // 3) Mõnikord kasutatakse input type=text
+      document.querySelectorAll("form.wpforms-form input[type=\\'text\\']").forEach(function(i){ candidates.push(i); });
 
-      // Vali esimene, mis tundub sõnum: name sisaldab message/textarea või on suurem
       for (var i=0;i<candidates.length;i++){
         var el = candidates[i];
         var name = (el.getAttribute("name") || "").toLowerCase();
@@ -82,7 +79,6 @@ add_shortcode('steel_price_calc', function () {
         }
       }
 
-      // fallback: esimene textarea WPForms vormis
       for (var j=0;j<candidates.length;j++){
         if(candidates[j].tagName.toLowerCase()==="textarea") return candidates[j];
       }
@@ -92,10 +88,8 @@ add_shortcode('steel_price_calc', function () {
     function steelSetMessageIfEmpty(text){
       var msg = steelFindWPFormsMessageField();
       if(!msg) return;
-
       var current = (msg.value || "").trim();
       if(current.length > 0) return; // ära kirjuta üle
-
       msg.value = text;
       msg.dispatchEvent(new Event("input", {bubbles:true}));
       msg.dispatchEvent(new Event("change", {bubbles:true}));
@@ -104,44 +98,39 @@ add_shortcode('steel_price_calc', function () {
     function steelCalcPrice(){
       var l = Number(document.getElementById("spc_l").value || 0);
       var w = Number(document.getElementById("spc_w").value || 0);
-
-      // Kogus (jm)
-      var q = Number(document.getElementById("spc_q").value || 0);
+      var qtyJm = Number(document.getElementById("spc_q").value || 0);
       var mat = document.getElementById("spc_mat").value;
       var ral = (document.getElementById("spc_ral").value || "").trim();
 
-      if(l<=0 || w<=0 || q<=0){
+      if(l<=0 || w<=0 || qtyJm<=0){
         document.getElementById("spc_price").innerHTML = "Palun sisesta mõõdud ja kogus";
         return;
       }
 
-      // Haar A ja Haar B: kummalegi +10mm (toorik)
+      // Haar A ja Haar B: kummalegi +10mm
       var haarA = l + 10; // mm
       var haarB = w + 10; // mm
 
       // Materjali m2 hinnad (sinu hinnad)
-      var baseM2 = 8; // PUR default
-      if(mat === "tsink")     baseM2 = 7;
-      if(mat === "alutsink") baseM2 = 7;
-      if(mat === "pol")      baseM2 = 7.5;
-      if(mat === "pur")      baseM2 = 8;
-      if(mat === "pur_matt") baseM2 = 11;
+      var m2Price = 8; // PUR default
+      if(mat === "tsink")     m2Price = 7;
+      if(mat === "alutsink") m2Price = 7;
+      if(mat === "pol")      m2Price = 7.5;
+      if(mat === "pur")      m2Price = 8;
+      if(mat === "pur_matt") m2Price = 11;
 
-      // JM hind on sisemine (klient ei näe)
-      var jmPrice = 3; // €/jm
+      // Sinu JM-põhine valem:
+      // jm_unit_price = (((haarA + haarB) * 1jm) * m2Price) + 2.5
+      // Tõlgendus: (haarA+haarB) mm -> m, korruta m2 hinnaga, lisa 2.5 €/jm
+      var perJmFixedFee = 2.5;
+      var jmUnitPrice = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
 
-      // Arvutused
-      var m2 = (haarA/1000) * (haarB/1000);
-      var jm = (haarA/1000);
-
-      var materialCost = (m2 * baseM2) * q;
-      var jmCost = (jm * jmPrice) * q;
-      var total = materialCost + jmCost;
-
+      var total = jmUnitPrice * qtyJm;
       var price = total.toFixed(2);
+
       document.getElementById("spc_price").innerHTML = price.replace(".", ",") + " €";
 
-      // Materjali nimi parameetritesse
+      // Materjali nimi
       var matName = "";
       if(mat==="tsink") matName="Tsink";
       if(mat==="alutsink") matName="Alutsink";
@@ -153,19 +142,22 @@ add_shortcode('steel_price_calc', function () {
       var paramsObj = {
         pikkus_mm: l,
         laius_mm: w,
-        kogus_jm: q,
+        kogus_jm: qtyJm,
         haarA_mm: haarA,
         haarB_mm: haarB,
         materjal: matName,
         ral: ral,
+        m2_hind_eur: m2Price,
+        fikseeritud_lisa_eur_jm: perJmFixedFee,
+        jm_uhikuhind_eur_jm: Number(jmUnitPrice.toFixed(4)),
         hind_eur: Number(price)
       };
       var params = JSON.stringify(paramsObj);
 
-      // ✅ WPForms: hind Hidden Field ID = 17 (täida KÕIK sobivad väljad lehel)
+      // ✅ WPForms: hind Hidden Field ID = 17
       var wpformsPriceId = 17;
       document.querySelectorAll(
-        \'input[name="wpforms[fields][\' + wpformsPriceId + \']"], textarea[name="wpforms[fields][\' + wpformsPriceId + \']"]\'
+        "input[name=\\'wpforms[fields][" + wpformsPriceId + "]\\'], textarea[name=\\'wpforms[fields][" + wpformsPriceId + "]\\']"
       ).forEach(function(el){
         el.value = price;
         el.dispatchEvent(new Event("input", {bubbles:true}));
@@ -194,7 +186,7 @@ add_shortcode('steel_price_calc', function () {
       var msgText =
         "Soovin pakkumist.\\n" +
         "Pikkus: " + l + " mm, Laius: " + w + " mm\\n" +
-        "Kogus: " + q + " jm\\n" +
+        "Kogus: " + qtyJm + " jm\\n" +
         "Materjal: " + matName + (ral ? (", RAL: " + ral) : "") + "\\n" +
         "Orienteeruv hind: " + price.replace(".", ",") + " €";
       steelSetMessageIfEmpty(msgText);
