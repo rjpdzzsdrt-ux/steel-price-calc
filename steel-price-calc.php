@@ -1,38 +1,73 @@
 <?php
 /**
  * Plugin Name: Steel.ee Price Calculator
- * Description: Hinnakalkulaator Steel.ee toodetele + WPForms hidden field tugi
- * Version: 1.0
+ * Description: Kiir-hinnakalkulaator + WPForms hidden field (ID=17)
+ * Version: 1.1
  */
 
-add_shortcode('steel_price_calc', function(){
-return '
-<div style="border:1px solid #ccc;padding:20px;border-radius:8px">
-<h3>Arvuta orienteeruv hind</h3>
+if (!defined('ABSPATH')) exit;
 
-<label>Pikkus (mm)<br><input id="l"></label><br>
-<label>Laius (mm)<br><input id="w"></label><br>
-<label>Kogus<br><input id="q" value="1"></label><br><br>
+add_shortcode('steel_price_calc', function () {
+  return '
+  <div style="border:1px solid #ddd;padding:16px;border-radius:10px">
+    <h3 style="margin:0 0 12px 0">Arvuta orienteeruv hind</h3>
 
-<button onclick="calc()">Arvuta hind</button>
+    <label style="display:block;margin-bottom:8px">Pikkus (mm)<br>
+      <input id="spc_l" type="number" min="1" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+    </label>
 
-<h2 id="p">—</h2>
+    <label style="display:block;margin-bottom:8px">Laius (mm)<br>
+      <input id="spc_w" type="number" min="1" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+    </label>
 
-<script>
-function calc(){
- let l=document.getElementById("l").value;
- let w=document.getElementById("w").value;
- let q=document.getElementById("q").value;
+    <label style="display:block;margin-bottom:12px">Kogus (tk)<br>
+      <input id="spc_q" type="number" min="1" value="1" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+    </label>
 
- let m2=(l/1000)*(w/1000);
- let price=(m2*25*q+5).toFixed(2);
+    <button type="button" onclick="steelCalcPrice()"
+      style="padding:10px 14px;border-radius:10px;border:0;cursor:pointer">
+      Arvuta hind
+    </button>
 
- document.getElementById("p").innerHTML=price+" €";
+    <div style="margin-top:14px">
+      <div id="spc_price" style="font-size:22px;font-weight:700">—</div>
+      <div style="font-size:12px;opacity:.75;margin-top:6px">
+        Orienteeruv hind. Täpne hind kinnitatakse pakkumisel.
+      </div>
+    </div>
 
- // WPForms hidden field
- let h = document.querySelector("input.steel-orient-hind, .steel-orient-hind input");
-if(h) h.value = price;
-}
-</script>
-</div>';
+    <script>
+    function steelCalcPrice(){
+      var l = Number(document.getElementById("spc_l").value || 0);
+      var w = Number(document.getElementById("spc_w").value || 0);
+      var q = Number(document.getElementById("spc_q").value || 1);
+
+      if(l<=0 || w<=0 || q<=0){
+        document.getElementById("spc_price").innerHTML = "Palun sisesta mõõdud ja kogus";
+        return;
+      }
+
+      // DEMO hinnamudel (muudame hiljem sinu päris loogikaks)
+      var m2 = (l/1000) * (w/1000);
+      var price = (m2 * 25 * q + 5).toFixed(2);
+
+      document.getElementById("spc_price").innerHTML = price.replace(".", ",") + " €";
+
+      // ✅ WPForms Hidden Field ID = 17
+      var wpformsFieldId = 17;
+      var inputById = document.querySelector(\'input[name="wpforms[fields][\' + wpformsFieldId + \']"]\');
+      if(inputById){
+        inputById.value = price;
+        inputById.dispatchEvent(new Event("change", {bubbles:true}));
+      }
+
+      // ✅ Varuvariant: kui kasutad CSS classi "steel-orient-hind"
+      var inputByClass = document.querySelector("input.steel-orient-hind, .steel-orient-hind input");
+      if(inputByClass){
+        inputByClass.value = price;
+        inputByClass.dispatchEvent(new Event("change", {bubbles:true}));
+      }
+    }
+    </script>
+  </div>';
 });
