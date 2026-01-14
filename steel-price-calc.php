@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Steel.ee Price Calculator
- * Description: Hinnakalkulaator (JM-põhine valem) + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto)
- * Version: 2.4.1
+ * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto)
+ * Version: 2.4.3
  */
 
 if (!defined('ABSPATH')) exit;
@@ -13,7 +13,7 @@ add_shortcode('steel_price_calc', function () {
 <div style="border:1px solid #ddd;padding:16px;border-radius:10px;max-width:520px">
   <h3 style="margin:0 0 6px 0">Saa hind 30 sekundiga – sisesta mõõdud</h3>
   <div style="font-size:13px;opacity:.75;margin-bottom:12px">
-    Orienteeruv hind kohe ekraanile. Soovi korral saada päring – lisame mõõdud automaatselt kaasa.
+    Orienteeruv hind kohe ekraanile (sisaldab käibemaksu).
   </div>
 
   <label style="display:block;margin-bottom:8px">Pikkus (mm) — haar A<br>
@@ -54,7 +54,7 @@ add_shortcode('steel_price_calc', function () {
   <div style="margin-top:14px">
     <div id="spc_price" style="font-size:22px;font-weight:700">—</div>
     <div style="font-size:12px;opacity:.65;margin-top:6px">
-      Orienteeruv hind. Täpne hind kinnitatakse pakkumisel.
+      Hind sisaldab käibemaksu (KM-ga).
     </div>
   </div>
 </div>
@@ -103,29 +103,26 @@ add_shortcode('steel_price_calc', function () {
       return;
     }
 
-    // Haar A ja Haar B: kummalegi +10mm
     var haarA = l + 10;
     var haarB = w + 10;
 
-    // Materjali m2 hinnad (sinu hinnad)
-    var m2Price = 8; // PUR default
-    if(mat === "tsink")     m2Price = 7;
-    if(mat === "alutsink") m2Price = 7;
+    var m2Price = 8;
+    if(mat === "tsink")     m2Price = 6.5;
+    if(mat === "alutsink") m2Price = 6.5;
     if(mat === "pol")      m2Price = 7.5;
     if(mat === "pur")      m2Price = 8;
     if(mat === "pur_matt") m2Price = 11;
 
-    // Sinu JM-põhine valem:
-    // jm_unit_price = (((haarA + haarB) / 1000) * m2Price) + 2.5
-    // total = jm_unit_price * qtyJm
     var perJmFixedFee = 2.5;
-    var jmUnitPrice = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
-    var total = jmUnitPrice * qtyJm;
+    var jmUnitPriceNet = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
+    var totalNet = jmUnitPriceNet * qtyJm;
 
-    var price = total.toFixed(2);
-    document.getElementById("spc_price").innerHTML = price.replace(".", ",") + " €";
+    var vatRate = 1.24;
+    var totalGross = totalNet * vatRate;
+    var priceGross = totalGross.toFixed(2);
 
-    // Materjali nimi
+    document.getElementById("spc_price").innerHTML = priceGross.replace(".", ",") + " € (KM-ga)";
+
     var matName = "";
     if(mat==="tsink") matName="Tsink";
     if(mat==="alutsink") matName="Alutsink";
@@ -133,7 +130,6 @@ add_shortcode('steel_price_calc', function () {
     if(mat==="pur") matName="PUR";
     if(mat==="pur_matt") matName="PUR MATT";
 
-    // Parameetrid JSON (WPFormsile)
     var paramsObj = {
       pikkus_mm: l,
       laius_mm: w,
@@ -144,40 +140,38 @@ add_shortcode('steel_price_calc', function () {
       ral: ral,
       m2_hind_eur: m2Price,
       fikseeritud_lisa_eur_jm: perJmFixedFee,
-      jm_uhikuhind_eur_jm: Number(jmUnitPrice.toFixed(4)),
-      hind_eur: Number(price)
+      jm_uhikuhind_net_eur_jm: Number(jmUnitPriceNet.toFixed(4)),
+      hind_net_eur: Number(totalNet.toFixed(2)),
+      km_kordaja: vatRate,
+      hind_kmga_eur: Number(priceGross)
     };
     var params = JSON.stringify(paramsObj);
 
-    // WPForms: hind Hidden Field ID = 17
     var wpformsPriceId = 17;
     document.querySelectorAll('input[name="wpforms[fields][' + wpformsPriceId + ']"], textarea[name="wpforms[fields][' + wpformsPriceId + ']"]').forEach(function(el){
-      el.value = price;
+      el.value = priceGross;
       el.dispatchEvent(new Event("input", {bubbles:true}));
       el.dispatchEvent(new Event("change", {bubbles:true}));
     });
 
-    // WPForms: parameetrid Hidden field CSS class steel-orient-params
     document.querySelectorAll("input.steel-orient-params, textarea.steel-orient-params, .steel-orient-params input, .steel-orient-params textarea").forEach(function(el){
       el.value = params;
       el.dispatchEvent(new Event("input", {bubbles:true}));
       el.dispatchEvent(new Event("change", {bubbles:true}));
     });
 
-    // Varuvariant: hind CSS class steel-orient-hind
     document.querySelectorAll("input.steel-orient-hind, textarea.steel-orient-hind, .steel-orient-hind input, .steel-orient-hind textarea").forEach(function(el){
-      el.value = price;
+      el.value = priceGross;
       el.dispatchEvent(new Event("input", {bubbles:true}));
       el.dispatchEvent(new Event("change", {bubbles:true}));
     });
 
-    // Täida automaatselt sõnum (kui tühi)
     var msgText =
       "Soovin pakkumist.\\n" +
       "Pikkus: " + l + " mm, Laius: " + w + " mm\\n" +
       "Kogus: " + qtyJm + " jm\\n" +
       "Materjal: " + matName + (ral ? (", RAL: " + ral) : "") + "\\n" +
-      "Orienteeruv hind: " + price.replace(".", ",") + " €";
+      "Orienteeruv hind (KM-ga): " + priceGross.replace(".", ",") + " €";
     steelSetMessageIfEmpty(msgText);
   };
 })();
