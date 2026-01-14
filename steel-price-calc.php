@@ -30,8 +30,8 @@ function calc(){
  document.getElementById("p").innerHTML=price+" €";
 
  // WPForms hidden field
- let h=document.querySelector(".steel-orient-hind");
- if(h) h.value=price;
+ let h = document.querySelector("input.steel-orient-hind, .steel-orient-hind input");
+if(h) h.value = price;
 }
 </script>
 </div>';
