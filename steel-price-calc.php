@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Steel.ee Price Calculator
  * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto)
- * Version: 2.4.3
+ * Version: 2.4.5
  */
 
 if (!defined('ABSPATH')) exit;
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) exit;
 add_shortcode('steel_price_calc', function () {
 
   $html = <<<HTML
-<div style="border:1px solid #ddd;padding:16px;border-radius:10px;max-width:520px">
+<div class="steel-price-calc" style="border:1px solid #ddd;padding:16px;border-radius:10px;width:100%;box-sizing:border-box">
   <h3 style="margin:0 0 6px 0">Saa hind 30 sekundiga – sisesta mõõdud</h3>
   <div style="font-size:13px;opacity:.75;margin-bottom:12px">
     Orienteeruv hind kohe ekraanile (sisaldab käibemaksu).
@@ -18,21 +18,21 @@ add_shortcode('steel_price_calc', function () {
 
   <label style="display:block;margin-bottom:8px">Pikkus (mm) — haar A<br>
     <input id="spc_l" type="number" min="1" inputmode="numeric"
-      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
   </label>
 
   <label style="display:block;margin-bottom:8px">Laius (mm) — haar B<br>
     <input id="spc_w" type="number" min="1" inputmode="numeric"
-      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
   </label>
 
   <label style="display:block;margin-bottom:8px">Kogus (jm)<br>
     <input id="spc_q" type="number" min="0.01" step="0.01" value="1" inputmode="decimal"
-      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
   </label>
 
   <label style="display:block;margin-bottom:8px">Materjal<br>
-    <select id="spc_mat" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+    <select id="spc_mat" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
       <option value="tsink">Tsink</option>
       <option value="alutsink">Alutsink</option>
       <option value="pol">POL</option>
@@ -43,15 +43,21 @@ add_shortcode('steel_price_calc', function () {
 
   <label style="display:block;margin-bottom:12px">Toon (RAL) (valikuline)<br>
     <input id="spc_ral" placeholder="nt RAL7016"
-      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px">
+      style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
   </label>
 
-  <button type="button" onclick="steelCalcPrice()"
-    style="padding:10px 14px;border-radius:10px;border:0;cursor:pointer">
-    Arvuta hind
-  </button>
+  <div style="display:flex;justify-content:center">
+    <button type="button"
+      class="elementor-button elementor-button-link elementor-size-md"
+      onclick="steelCalcPrice()"
+      style="padding:12px 18px;border-radius:10px;cursor:pointer">
+      <span class="elementor-button-content-wrapper">
+        <span class="elementor-button-text">Arvuta hind</span>
+      </span>
+    </button>
+  </div>
 
-  <div style="margin-top:14px">
+  <div style="margin-top:14px;text-align:center">
     <div id="spc_price" style="font-size:22px;font-weight:700">—</div>
     <div style="font-size:12px;opacity:.65;margin-top:6px">
       Hind sisaldab käibemaksu (KM-ga).
@@ -108,10 +114,10 @@ add_shortcode('steel_price_calc', function () {
 
     var m2Price = 8;
     if(mat === "tsink")     m2Price = 6.5;
-    if(mat === "alutsink") m2Price = 6.5;
+    if(mat === "alutsink") m2Price = 6.5 ;
     if(mat === "pol")      m2Price = 7.5;
-    if(mat === "pur")      m2Price = 8;
-    if(mat === "pur_matt") m2Price = 11;
+    if(mat === "pur")      m2Price = 8.5;
+    if(mat === "pur_matt") m2Price = 11.5;
 
     var perJmFixedFee = 2.5;
     var jmUnitPriceNet = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
