@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Steel.ee Price Calculator
- * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto)
- * Version: 2.4.5
+ * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms auto-täide + GTM dataLayer events (calc + lead submit)
+ * Version: 2.5.0
  */
 
 if (!defined('ABSPATH')) exit;
@@ -48,7 +48,7 @@ add_shortcode('steel_price_calc', function () {
 
   <div style="display:flex;justify-content:center">
     <button type="button"
-      class="elementor-button elementor-button-link elementor-size-md"
+      class="elementor-button elementor-button-link elementor-size-md steel-calc-btn"
       onclick="steelCalcPrice()"
       style="padding:12px 18px;border-radius:10px;cursor:pointer">
       <span class="elementor-button-content-wrapper">
@@ -67,6 +67,22 @@ add_shortcode('steel_price_calc', function () {
 
 <script>
 (function(){
+  // =========================
+  // 0) GTM helper
+  // =========================
+  function steelDLPush(obj){
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(obj);
+  }
+
+  // (VALIKULINE) Kui tahad trackida ainult kindlat WPForms vormi, pane siia form ID.
+  // Näide: var STEEL_WPFORMS_ONLY_ID = 1234;
+  // Kui jätad null/0, siis trackib kõiki WPForms edukaid submite.
+  var STEEL_WPFORMS_ONLY_ID = 0;
+
+  // =========================
+  // 1) WPForms message field finder (sinu olemasolev loogika)
+  // =========================
   function steelFindWPFormsMessageField(){
     var candidates = [];
     document.querySelectorAll("form.wpforms-form textarea").forEach(function(t){ candidates.push(t); });
@@ -97,6 +113,9 @@ add_shortcode('steel_price_calc', function () {
     msg.dispatchEvent(new Event("change", {bubbles:true}));
   }
 
+  // =========================
+  // 2) Kalkulaatori arvutus + GTM event
+  // =========================
   window.steelCalcPrice = function(){
     var l = Number(document.getElementById("spc_l").value || 0);
     var w = Number(document.getElementById("spc_w").value || 0);
@@ -114,10 +133,10 @@ add_shortcode('steel_price_calc', function () {
 
     var m2Price = 8;
     if(mat === "tsink")     m2Price = 6.5;
-    if(mat === "alutsink") m2Price = 6.5 ;
-    if(mat === "pol")      m2Price = 7.5;
-    if(mat === "pur")      m2Price = 8.5;
-    if(mat === "pur_matt") m2Price = 11.5;
+    if(mat === "alutsink")  m2Price = 6.5;
+    if(mat === "pol")       m2Price = 7.5;
+    if(mat === "pur")       m2Price = 8.5;
+    if(mat === "pur_matt")  m2Price = 11.5;
 
     var perJmFixedFee = 2.5;
     var jmUnitPriceNet = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
@@ -151,6 +170,14 @@ add_shortcode('steel_price_calc', function () {
       km_kordaja: vatRate,
       hind_kmga_eur: Number(priceGross)
     };
+
+    // --- GTM: kalkulaatori event koos kõigi parameetritega (ÕIGE viis) ---
+    steelDLPush({
+      event: "steel_price_calc",
+      steel_calc: paramsObj
+    });
+
+    // --- WPForms väljade automaatne täitmine (sinu olemasolev loogika) ---
     var params = JSON.stringify(paramsObj);
 
     var wpformsPriceId = 17;
@@ -180,6 +207,35 @@ add_shortcode('steel_price_calc', function () {
       "Orienteeruv hind (KM-ga): " + priceGross.replace(".", ",") + " €";
     steelSetMessageIfEmpty(msgText);
   };
+
+  // =========================
+  // 3) WPForms lead submit success -> GTM event (ÕIGE viis)
+  // =========================
+  function steelPushLeadSubmit(e){
+    var formId =
+      (e && e.detail && (e.detail.formId || e.detail.id)) ||
+      (e && e.formId) ||
+      undefined;
+
+    // Kui kasutad filtreerimist kindla form_id järgi
+    if (STEEL_WPFORMS_ONLY_ID && String(formId) !== String(STEEL_WPFORMS_ONLY_ID)) {
+      return;
+    }
+
+    steelDLPush({
+      event: "steel_lead_submit",
+      steel_lead: {
+        source: "wpforms",
+        form_id: formId || ""
+      }
+    });
+  }
+
+  // WPForms AJAX submit success event (conversion only)
+  document.addEventListener("wpformsAjaxSubmitSuccess", function(e){
+    steelPushLeadSubmit(e);
+  });
+
 })();
 </script>
 HTML;
