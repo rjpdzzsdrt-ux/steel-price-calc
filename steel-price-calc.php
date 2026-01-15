@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Steel.ee Price Calculator
- * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto)
- * Version: 2.4.5
+ * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms (hind ID=17, parameetrid steel-orient-params, sõnum auto) + GA4 dataLayer event
+ * Version: 2.4.6
  */
 
 if (!defined('ABSPATH')) exit;
@@ -97,6 +97,15 @@ add_shortcode('steel_price_calc', function () {
     msg.dispatchEvent(new Event("change", {bubbles:true}));
   }
 
+  function steelGetMatName(mat){
+    if(mat==="tsink") return "Tsink";
+    if(mat==="alutsink") return "Alutsink";
+    if(mat==="pol") return "POL";
+    if(mat==="pur") return "PUR";
+    if(mat==="pur_matt") return "PUR MATT";
+    return "";
+  }
+
   window.steelCalcPrice = function(){
     var l = Number(document.getElementById("spc_l").value || 0);
     var w = Number(document.getElementById("spc_w").value || 0);
@@ -114,7 +123,7 @@ add_shortcode('steel_price_calc', function () {
 
     var m2Price = 8;
     if(mat === "tsink")     m2Price = 6.5;
-    if(mat === "alutsink") m2Price = 6.5 ;
+    if(mat === "alutsink") m2Price = 6.5;
     if(mat === "pol")      m2Price = 7.5;
     if(mat === "pur")      m2Price = 8.5;
     if(mat === "pur_matt") m2Price = 11.5;
@@ -129,12 +138,7 @@ add_shortcode('steel_price_calc', function () {
 
     document.getElementById("spc_price").innerHTML = priceGross.replace(".", ",") + " € (KM-ga)";
 
-    var matName = "";
-    if(mat==="tsink") matName="Tsink";
-    if(mat==="alutsink") matName="Alutsink";
-    if(mat==="pol") matName="POL";
-    if(mat==="pur") matName="PUR";
-    if(mat==="pur_matt") matName="PUR MATT";
+    var matName = steelGetMatName(mat);
 
     var paramsObj = {
       pikkus_mm: l,
@@ -179,6 +183,24 @@ add_shortcode('steel_price_calc', function () {
       "Materjal: " + matName + (ral ? (", RAL: " + ral) : "") + "\\n" +
       "Orienteeruv hind (KM-ga): " + priceGross.replace(".", ",") + " €";
     steelSetMessageIfEmpty(msgText);
+
+    // --- GA4 / GTM dataLayer event ---
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: "steel_calc_price",
+      calc_version: "2.4.6",
+      value: Number(priceGross),
+      currency: "EUR",
+      page_path: (location && location.pathname) ? location.pathname : "",
+      pikkus_mm: l,
+      laius_mm: w,
+      kogus_jm: qtyJm,
+      haarA_mm: haarA,
+      haarB_mm: haarB,
+      material: matName,
+      ral: ral,
+      m2_hind_eur: m2Price
+    });
   };
 })();
 </script>
