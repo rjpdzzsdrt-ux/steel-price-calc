@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Steel.ee Price Calculator
  * Description: Hinnakalkulaator (JM-põhine valem) + KM 24% + WPForms auto-täide + GTM dataLayer events (calc + lead submit)
- * Version: 2.5.0
+ * Version: 2.5.1
  */
 
 if (!defined('ABSPATH')) exit;
@@ -50,7 +50,7 @@ add_shortcode('steel_price_calc', function () {
     <button type="button"
       class="elementor-button elementor-button-link elementor-size-md steel-calc-btn"
       onclick="steelCalcPrice()"
-      style="padding:12px 18px;border-radius:10px;cursor:pointer">
+      style="padding:12px 18px;border-radius:10px;border:0;cursor:pointer">
       <span class="elementor-button-content-wrapper">
         <span class="elementor-button-text">Arvuta hind</span>
       </span>
@@ -68,6 +68,77 @@ add_shortcode('steel_price_calc', function () {
 <script>
 (function(){
   // =========================
+  // A) CTA värvi sünk (võta lehelt CTA nupu värv)
+  // =========================
+  function steelApplyButtonThemeColor(){
+    var calcBtn = document.querySelector(".steel-price-calc .steel-calc-btn");
+    if(!calcBtn) return;
+
+    // Kui teema/Elementor juba annab backgroundi, ära üle kirjuta
+    var currentBg = window.getComputedStyle(calcBtn).backgroundColor;
+    // Kui background on "transparent"/"rgba(0,0,0,0)" või väga hele default, siis sünkime
+    var isTransparent = (currentBg === "rgba(0, 0, 0, 0)" || currentBg === "transparent");
+
+    // Leia lehelt kõige tõenäolisem "peamine CTA" (hero nupp vms)
+    var pageCta =
+      document.querySelector(".elementor .elementor-button:not(.steel-calc-btn)") ||
+      document.querySelector("a.elementor-button-link") ||
+      document.querySelector(".elementor-button");
+
+    if(!pageCta) return;
+
+    var ctaStyles = window.getComputedStyle(pageCta);
+    var bg = ctaStyles.backgroundColor;
+    var color = ctaStyles.color;
+    var radius = ctaStyles.borderRadius;
+
+    // Rakenda ainult siis, kui kalkulaatori nupp pole juba stiilitud
+    if(isTransparent){
+      if(bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent"){
+        calcBtn.style.backgroundColor = bg;
+      }
+      if(color){
+        calcBtn.style.color = color;
+      }
+      if(radius){
+        calcBtn.style.borderRadius = radius;
+      }
+    }
+
+    // Hover sünk (kui Elementor teeb hoveri CSS-iga, siis ok; kui mitte, siis lihtne fallback)
+    // Võtame CTA nupu hoveri värvi, kui leitav (tihti pole, seega teeme kergelt tumedamaks).
+    var baseBg = window.getComputedStyle(calcBtn).backgroundColor;
+    function darken(rgb, factor){
+      // rgb: "rgb(r,g,b)" või "rgba(r,g,b,a)"
+      var m = rgb.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d\\.]+))?\\)/);
+      if(!m) return rgb;
+      var r = Math.max(0, Math.floor(parseInt(m[1],10) * factor));
+      var g = Math.max(0, Math.floor(parseInt(m[2],10) * factor));
+      var b = Math.max(0, Math.floor(parseInt(m[3],10) * factor));
+      return "rgb(" + r + "," + g + "," + b + ")";
+    }
+    var hoverBg = darken(baseBg, 0.88);
+
+    calcBtn.addEventListener("mouseenter", function(){
+      calcBtn.dataset._steelBg = calcBtn.style.backgroundColor || "";
+      calcBtn.style.filter = "brightness(0.95)";
+      // kui filter ei sobi, kommenteeri filter ja kasuta hoverBg:
+      // calcBtn.style.backgroundColor = hoverBg;
+    });
+    calcBtn.addEventListener("mouseleave", function(){
+      calcBtn.style.filter = "";
+      // calcBtn.style.backgroundColor = calcBtn.dataset._steelBg || "";
+    });
+  }
+
+  // käivita pärast renderit
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", steelApplyButtonThemeColor);
+  } else {
+    steelApplyButtonThemeColor();
+  }
+
+  // =========================
   // 0) GTM helper
   // =========================
   function steelDLPush(obj){
@@ -75,13 +146,11 @@ add_shortcode('steel_price_calc', function () {
     window.dataLayer.push(obj);
   }
 
-  // (VALIKULINE) Kui tahad trackida ainult kindlat WPForms vormi, pane siia form ID.
-  // Näide: var STEEL_WPFORMS_ONLY_ID = 1234;
-  // Kui jätad null/0, siis trackib kõiki WPForms edukaid submite.
+  // Kui tahad trackida ainult kindlat WPForms vormi, pane siia form ID.
   var STEEL_WPFORMS_ONLY_ID = 0;
 
   // =========================
-  // 1) WPForms message field finder (sinu olemasolev loogika)
+  // 1) WPForms message field finder
   // =========================
   function steelFindWPFormsMessageField(){
     var candidates = [];
@@ -171,13 +240,11 @@ add_shortcode('steel_price_calc', function () {
       hind_kmga_eur: Number(priceGross)
     };
 
-    // --- GTM: kalkulaatori event koos kõigi parameetritega (ÕIGE viis) ---
     steelDLPush({
       event: "steel_price_calc",
       steel_calc: paramsObj
     });
 
-    // --- WPForms väljade automaatne täitmine (sinu olemasolev loogika) ---
     var params = JSON.stringify(paramsObj);
 
     var wpformsPriceId = 17;
@@ -209,7 +276,7 @@ add_shortcode('steel_price_calc', function () {
   };
 
   // =========================
-  // 3) WPForms lead submit success -> GTM event (ÕIGE viis)
+  // 3) WPForms lead submit success -> GTM event
   // =========================
   function steelPushLeadSubmit(e){
     var formId =
@@ -217,7 +284,6 @@ add_shortcode('steel_price_calc', function () {
       (e && e.formId) ||
       undefined;
 
-    // Kui kasutad filtreerimist kindla form_id järgi
     if (STEEL_WPFORMS_ONLY_ID && String(formId) !== String(STEEL_WPFORMS_ONLY_ID)) {
       return;
     }
@@ -231,7 +297,6 @@ add_shortcode('steel_price_calc', function () {
     });
   }
 
-  // WPForms AJAX submit success event (conversion only)
   document.addEventListener("wpformsAjaxSubmitSuccess", function(e){
     steelPushLeadSubmit(e);
   });
