@@ -225,7 +225,7 @@ add_shortcode('steel_price_calc', function () {
     if(mat==="pur_matt") matName="PUR MATT";
 
     var paramsObj = {
-      pikkus_mm: l,
+      laius_mm: l,
       laius_mm: w,
       kogus_jm: qtyJm,
       haarA_mm: haarA,
