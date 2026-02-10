@@ -16,7 +16,7 @@ add_shortcode('steel_price_calc', function () {
     Orienteeruv hind kohe ekraanile (sisaldab käibemaksu).
   </div>
 
-  <label style="display:block;margin-bottom:8px">Pikkus (mm) — haar A<br>
+  <label style="display:block;margin-bottom:8px">Laius  (mm) — haar A<br>
     <input id="spc_l" type="number" min="1" inputmode="numeric"
       style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box">
   </label>
@@ -268,7 +268,7 @@ add_shortcode('steel_price_calc', function () {
 
     var msgText =
       "Soovin pakkumist.\\n" +
-      "Pikkus: " + l + " mm, Laius: " + w + " mm\\n" +
+      "Laius: " + l + " mm, Laius: " + w + " mm\\n" +
       "Kogus: " + qtyJm + " jm\\n" +
       "Materjal: " + matName + (ral ? (", RAL: " + ral) : "") + "\\n" +
       "Orienteeruv hind (KM-ga): " + priceGross.replace(".", ",") + " €";
