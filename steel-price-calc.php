@@ -201,13 +201,13 @@ add_shortcode('steel_price_calc', function () {
     var haarB = w + 10;
 
     var m2Price = 8;
-    if(mat === "tsink")     m2Price = 6.5;
-    if(mat === "alutsink")  m2Price = 6.5;
-    if(mat === "pol")       m2Price = 7.5;
-    if(mat === "pur")       m2Price = 8.5;
-    if(mat === "pur_matt")  m2Price = 11.5;
+    if(mat === "tsink")     m2Price = 7;
+    if(mat === "alutsink")  m2Price = 7;
+    if(mat === "pol")       m2Price = 8;
+    if(mat === "pur")       m2Price = 9;
+    if(mat === "pur_matt")  m2Price = 12;
 
-    var perJmFixedFee = 2.5;
+    var perJmFixedFee = 3;
     var jmUnitPriceNet = (((haarA + haarB) / 1000) * m2Price) + perJmFixedFee;
     var totalNet = jmUnitPriceNet * qtyJm;
 
